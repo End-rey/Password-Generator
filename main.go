@@ -42,7 +42,6 @@ func (w *Word) String() string {
 
 type Passwords struct {
 	mu                       sync.Mutex
-	waitGroup                sync.WaitGroup
 	minDist                  int
 	passwordWordsWithMinDist [][wordsCount]string
 	allPasswords             [][wordsCount]string
@@ -57,18 +56,16 @@ func main() {
 
 	slices.SortFunc(words, func(i, j *Word) int { return (i.distance - i.Len()) - (j.distance - j.Len()) })
 
-	// Init Defult Values
-	left := 0
 	wordsMinLen := make([]*Word, 0, len(words))
 	passwords := &Passwords{
 		minDist:                  math.MaxInt32,
 		passwordWordsWithMinDist: make([][wordsCount]string, 0),
 		allPasswords:             make([][wordsCount]string, 0),
 	}
-
-	// Init Params
+	
 	diffDistAndLen := words[0].distance - words[0].Len() + 1
-
+	
+	left := 0
 	// Loop to find the best password
 	// until at least one password satisfying the conditions is found
 	for passwords.minDist == math.MaxInt32 {
@@ -110,11 +107,12 @@ func main() {
 // - Passwords with minimal distance
 // - All passwords satisfying the conditions
 func findBestPasswordWithGraph(wordGraph map[*Word][]*Word, passwords *Passwords) {
-	passwords.waitGroup.Add(len(wordGraph))
+	var wg sync.WaitGroup
+	wg.Add(len(wordGraph))
 
 	for word1, relatedWords1 := range wordGraph {
 		go func(word1 *Word, relatedWords1 []*Word) {
-			defer passwords.waitGroup.Done()
+			defer wg.Done()
 			words := [wordsCount]*Word{word1}
 
 			for _, word2 := range relatedWords1 {
@@ -127,7 +125,7 @@ func findBestPasswordWithGraph(wordGraph map[*Word][]*Word, passwords *Passwords
 		}(word1, relatedWords1)
 	}
 
-	passwords.waitGroup.Wait()
+	wg.Wait()
 }
 
 // Recursively iterates through all the possible combinations of words
